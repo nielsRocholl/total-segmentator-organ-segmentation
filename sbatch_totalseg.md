@@ -11,6 +11,8 @@ The job script **clones this repository into `/root`** on the compute node, inst
 
 Weights: first run needs Hub access, or pre-populate `~/.totalsegmentator` / set `TOTALSEG_HOME_DIR` to a path on the mount (e.g. under `/nnunet_data`).
 
+**`No module named 'pydicom.pixels'`:** the base image often has pydicom 2.x; TotalSegmentator needs **pydicom ≥ 3.0** (see `requirements.txt`). Ensure `pip install -r requirements.txt` runs on every job so the pin upgrades the env.
+
 Default job script:
 
 ```bash
