@@ -155,7 +155,8 @@ def sync_dataset_json(nnunet_raw: Path, out_root: Path, dataset_name: str) -> No
     src = nnunet_raw / dataset_name / "dataset.json"
     dst = out_root / dataset_name / "dataset.json"
     dst.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(src, dst)
+    # copyfile only (no copystat): NFS/shares often deny utime on destination.
+    shutil.copyfile(src, dst)
 
 
 def main() -> None:

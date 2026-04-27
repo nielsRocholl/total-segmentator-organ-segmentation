@@ -7,9 +7,9 @@ Host data is mounted at **`/nnunet_data`** (see `--container-mounts`). Inside th
 | `/nnunet_data/nnUNet_raw` | Input: nnU-Net raw datasets (`Dataset*`, `imagesTr`, `imagesTs`, …) |
 | `/nnunet_data/nnUNet_totalseg` | Output: mirrored layout with `labelsTr` / `labelsTs` multilabel NIfTIs |
 
-Place this repo (or at least `batch_totalseg_nnunet_raw.py` and `requirements.txt`) somewhere under the mounted tree, e.g. `/nnunet_data/total-segmentator/`, and point `SCRIPT_DIR` below to that directory.
+The job script **clones this repository into `/root`** on the compute node, installs `requirements.txt` from there, and runs the batch script. Data stays on **`/nnunet_data`** (mount only). For a **private** repo, use an SSH URL plus agent forwarding / deploy key in the container, or set `TOTALSEG_GIT_URL` to an HTTPS URL with a token.
 
-Weights: first run needs Hub access, or pre-populate `~/.totalsegmentator` / set `TOTALSEG_HOME_DIR` to a path on the mount.
+Weights: first run needs Hub access, or pre-populate `~/.totalsegmentator` / set `TOTALSEG_HOME_DIR` to a path on the mount (e.g. under `/nnunet_data`).
 
 Default job script:
 
@@ -32,12 +32,18 @@ set -euo pipefail
 export PIP_CACHE_DIR=/root/.pip-cache
 mkdir -p "$PIP_CACHE_DIR"
 
-# Directory containing batch_totalseg_nnunet_raw.py and requirements.txt (on the host, under the mount).
-SCRIPT_DIR=/nnunet_data/total-segmentator
+REPO_DIR=/root/total-segmentator-organ-segmentation
+GIT_URL="${TOTALSEG_GIT_URL:-git@github.com:nielsRocholl/total-segmentator-organ-segmentation.git}"
 
-pip3 install -r "${SCRIPT_DIR}/requirements.txt"
+if [ ! -d "${REPO_DIR}/.git" ]; then
+  git clone --depth 1 --branch main "$GIT_URL" "$REPO_DIR"
+fi
+git -C "$REPO_DIR" fetch --depth 1 origin main
+git -C "$REPO_DIR" reset --hard origin/main
 
-python3 "${SCRIPT_DIR}/batch_totalseg_nnunet_raw.py" \
+pip3 install -r "${REPO_DIR}/requirements.txt"
+
+python3 "${REPO_DIR}/batch_totalseg_nnunet_raw.py" \
   --nnunet-raw /nnunet_data/nnUNet_raw \
   --out-root /nnunet_data/nnUNet_totalseg \
   --device gpu
