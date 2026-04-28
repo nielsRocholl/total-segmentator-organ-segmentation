@@ -13,6 +13,9 @@ Quality: models assume CT-like Hounsfield units (roughly air ~-1000, water ~0, s
 ~40–80). If volumes are rescaled (0–1), wrong slope/intercept, or MR with --task total,
 masks will look fragmented or wrong. Use --qc-first to log intensity percentiles on one case.
 
+Dataset010_* (CECT) is always excluded: those volumes are windowed uint8, not Hounsfield units,
+so TotalSegmentator output is unreliable until data are re-exported in HU.
+
 Example:
   python batch_totalseg_nnunet_raw.py \\
     --nnunet-raw /data/nnUNet_raw --out-root /data/nnUNet_totalseg --device gpu
@@ -96,6 +99,8 @@ def collect_jobs(
         if not ds.is_dir() or not ds.name.startswith("Dataset"):
             continue
         if ds.name.startswith("Dataset999_"):
+            continue
+        if ds.name.startswith("Dataset010"):
             continue
         if only_datasets is not None and ds.name not in only_datasets:
             continue
@@ -284,6 +289,11 @@ def main() -> None:
 
     all_jobs = collect_jobs(nn_raw, out_root, only)
     console = Console(stderr=True)
+    if any(p.is_dir() and p.name.startswith("Dataset010") for p in nn_raw.iterdir()):
+        console.print(
+            "[dim]Excluding Dataset010_* (CECT is uint8 windowed, not HU — "
+            "re-export in HU to segment with TotalSegmentator).[/dim]"
+        )
     for ds_name in sorted({j.dataset_name for j in all_jobs}):
         sync_dataset_json(nn_raw, out_root, ds_name)
 

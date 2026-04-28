@@ -69,6 +69,10 @@ Resume: re-submit the same job; completed cases with non-empty label files are s
 
 Default task **`total`** chains **several** nn-U-Net refinements at **1.5 mm** — rough **many minutes per case** is normal on one GPU. Use **`--fast`** / **`--fastest`** when throughput matters more than full-res detail, or spawn **`--shard-total`** parallel GPU jobs across the scheduler.
 
+### Dataset010_CECT (always skipped)
+
+**`Dataset010_*`** is **never** segmented: CECT volumes in your tree are **uint8 windowed** (display scale), not **HU**. TotalSegmentator is trained on native CT intensities — those masks stay wrong until you rebuild NIfTIs with proper rescale slope/intercept. Other datasets under `nnUNet_raw` are unaffected.
+
 ### Bad-looking masks
 
 TotalSegmentator assumes **CT Hounsfield scale** on the **`CT`** channel in `dataset.json`. If tensors are **[0,1] floats**, PET/SUV wrongly labeled **`CT`**, or **MR** routed through **`total`**, overlay will look patchy/wrong — fix preprocessing or **`--task total_mr`** for MR.
