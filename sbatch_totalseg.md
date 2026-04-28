@@ -53,9 +53,35 @@ python3 "${REPO_DIR}/batch_totalseg_nnunet_raw.py" \
 
 Optional flags (append as needed):
 
-- `--fast` — lower-resolution model (less VRAM / faster).
-- `--task total_mr` — MR volumes instead of default CT `total`.
+- **`--fast`** — 3 mm model (much faster than default, modest quality drop). **`--fastest`** — 6 mm, fastest coarsest.
+- **`--qc-first`** — log HU-like percentiles on the first pending volume; if values look nothing like CT (not ~ −1000…+1000), fix intensity/slope/intercept upstream before trusting masks.
+- **`--body-seg`** — crop to body first (often less VRAM, sometimes better field-of-view).
+- **`--nr-thr-resamp 8`** — more CPU threads for resampling (match `--cpus-per-task` roughly).
+- **`--only-dataset Dataset027_MCT_LTDiag`** — repeat to limit which folders are processed.
+- **`--shard-index K --shard-total N`** — parallel jobs: stable hash splits cases across *N* jobs (each needs its own `$SLURM_ARRAY_TASK_ID` or manual `K`).
+- `--task total_mr` — MR volumes instead of default CT **`total`**.
 - `--fail-log /nnunet_data/nnUNet_totalseg/failures.jsonl` — append JSON lines on per-case errors.
 - `--verbose` — forward TotalSegmentator logging (noisy; progress bar stays on stderr).
 
 Resume: re-submit the same job; completed cases with non-empty label files are skipped unless you pass `--force`.
+
+### Slow runs
+
+Default task **`total`** chains **several** nn-U-Net refinements at **1.5 mm** — rough **many minutes per case** is normal on one GPU. Use **`--fast`** / **`--fastest`** when throughput matters more than full-res detail, or spawn **`--shard-total`** parallel GPU jobs across the scheduler.
+
+### Bad-looking masks
+
+TotalSegmentator assumes **CT Hounsfield scale** on the **`CT`** channel in `dataset.json`. If tensors are **[0,1] floats**, PET/SUV wrongly labeled **`CT`**, or **MR** routed through **`total`**, overlay will look patchy/wrong — fix preprocessing or **`--task total_mr`** for MR.
+
+Parallel multi-GPU bash sketch (array size = shard count):
+
+```bash
+python3 "${REPO_DIR}/batch_totalseg_nnunet_raw.py" \
+  --nnunet-raw /nnunet_data/nnUNet_raw \
+  --out-root /nnunet_data/nnUNet_totalseg \
+  --device gpu \
+  --fast \
+  --qc-first \
+  --shard-index "${SLURM_ARRAY_TASK_ID}" \
+  --shard-total 4
+```
