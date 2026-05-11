@@ -96,11 +96,26 @@ def extract_crop(image: sitk.Image, region: tuple[tuple[int, int, int], tuple[in
 
 
 def organ_complete(out_dir: Path) -> bool:
-    i, m = out_dir / "image.nii.gz", out_dir / "mask.nii.gz"
-    return i.is_file() and i.stat().st_size > 0 and m.is_file() and m.stat().st_size > 0
+    i, lesion_m = out_dir / "image.nii.gz", out_dir / "mask.nii.gz"
+    ts_m = out_dir / "labelTotalSeg" / "mask.nii.gz"
+    return (
+        i.is_file()
+        and i.stat().st_size > 0
+        and lesion_m.is_file()
+        and lesion_m.stat().st_size > 0
+        and ts_m.is_file()
+        and ts_m.stat().st_size > 0
+    )
 
 
-def crop_one_organ(ct: sitk.Image, organ_bin: sitk.Image, out_dir: Path, margin: int, force: bool) -> None:
+def crop_one_organ(
+    ct: sitk.Image,
+    organ_bin: sitk.Image,
+    lesion_labels: sitk.Image,
+    out_dir: Path,
+    margin: int,
+    force: bool,
+) -> None:
     if not np.any(sitk.GetArrayFromImage(organ_bin)):
         return
     if not force and organ_complete(out_dir):
@@ -109,11 +124,46 @@ def crop_one_organ(ct: sitk.Image, organ_bin: sitk.Image, out_dir: Path, margin:
     if region is None:
         return
     out_dir.mkdir(parents=True, exist_ok=True)
+    ts_dir = out_dir / "labelTotalSeg"
+    ts_dir.mkdir(parents=True, exist_ok=True)
     sitk.WriteImage(extract_crop(ct, region, is_mask=False), str(out_dir / "image.nii.gz"), useCompression=True)
-    sitk.WriteImage(extract_crop(organ_bin, region, is_mask=True), str(out_dir / "mask.nii.gz"), useCompression=True)
+    sitk.WriteImage(
+        extract_crop(lesion_labels, region, is_mask=True),
+        str(out_dir / "mask.nii.gz"),
+        useCompression=True,
+    )
+    sitk.WriteImage(
+        extract_crop(organ_bin, region, is_mask=True),
+        str(ts_dir / "mask.nii.gz"),
+        useCompression=True,
+    )
 
 
-def crop_case(ct: sitk.Image, seg: sitk.Image, liver_ids: list[int], lung_ids: list[int], case_root: Path, margin: int, force: bool) -> None:
-    assert_same_grid(ct, seg)
-    crop_one_organ(ct, binarize_labels(seg, liver_ids), case_root / "liver", margin, force)
-    crop_one_organ(ct, binarize_labels(seg, lung_ids), case_root / "lung", margin, force)
+def crop_case(
+    ct: sitk.Image,
+    seg_totalseg: sitk.Image,
+    lesion_labels: sitk.Image,
+    liver_ids: list[int],
+    lung_ids: list[int],
+    case_root: Path,
+    margin: int,
+    force: bool,
+) -> None:
+    assert_same_grid(ct, seg_totalseg)
+    assert_same_grid(ct, lesion_labels)
+    crop_one_organ(
+        ct,
+        binarize_labels(seg_totalseg, liver_ids),
+        lesion_labels,
+        case_root / "liver",
+        margin,
+        force,
+    )
+    crop_one_organ(
+        ct,
+        binarize_labels(seg_totalseg, lung_ids),
+        lesion_labels,
+        case_root / "lung",
+        margin,
+        force,
+    )

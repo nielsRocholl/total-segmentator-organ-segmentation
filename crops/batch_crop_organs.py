@@ -47,14 +47,18 @@ def task_label_sets(task: str) -> tuple[list[int], list[int]]:
 
 
 def run_case(job: CropJob, out_root: Path, liver_ids: list[int], lung_ids: list[int], margin: int, force: bool) -> None:
-    if not job.mask_path.is_file():
+    if not job.totalseg_path.is_file():
         raise FileNotFoundError(
-            f"{job.mask_path}\n(mask missing — check --totalseg-root, "
-            "e.g. .../totalseg_segmentations)"
+            f"{job.totalseg_path}\n(TotalSegmentation missing — check --totalseg-root)"
+        )
+    if not job.lesion_label_path.is_file():
+        raise FileNotFoundError(
+            f"{job.lesion_label_path}\n(lesion label missing — expect same filename as image under labelsTr/Ts)"
         )
     ct = sitk.ReadImage(str(job.image_path))
-    seg = sitk.ReadImage(str(job.mask_path))
-    crop_case(ct, seg, liver_ids, lung_ids, out_root / job.dataset_name / job.case_id, margin, force)
+    seg = sitk.ReadImage(str(job.totalseg_path))
+    lesion = sitk.ReadImage(str(job.lesion_label_path))
+    crop_case(ct, seg, lesion, liver_ids, lung_ids, out_root / job.dataset_name / job.case_id, margin, force)
 
 
 def main() -> None:

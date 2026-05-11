@@ -17,7 +17,8 @@ class CropJob:
     split: str
     case_id: str
     image_path: Path
-    mask_path: Path
+    lesion_label_path: Path
+    totalseg_path: Path
 
 
 def pick_ct_channel(channel_names: dict) -> int:
@@ -71,10 +72,28 @@ def collect_crop_jobs(
         seen_tr: set[str] = set()
         for cid, inp in iter_cases_in_dir(ds / "imagesTr", fe, ch):
             seen_tr.add(cid)
-            jobs.append(CropJob(ds.name, "Tr", cid, inp, seg_ds / "labelsTr" / f"{cid}{fe}"))
+            jobs.append(
+                CropJob(
+                    ds.name,
+                    "Tr",
+                    cid,
+                    inp,
+                    ds / "labelsTr" / inp.name,
+                    seg_ds / "labelsTr" / f"{cid}{fe}",
+                )
+            )
         for cid, inp in iter_cases_in_dir(ds / "imagesTs", fe, ch):
             if cid not in seen_tr:
-                jobs.append(CropJob(ds.name, "Ts", cid, inp, seg_ds / "labelsTs" / f"{cid}{fe}"))
+                jobs.append(
+                    CropJob(
+                        ds.name,
+                        "Ts",
+                        cid,
+                        inp,
+                        ds / "labelsTs" / inp.name,
+                        seg_ds / "labelsTs" / f"{cid}{fe}",
+                    )
+                )
     return jobs
 
 
