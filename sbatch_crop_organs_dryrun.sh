@@ -4,9 +4,9 @@
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=32G
 #SBATCH --time=07-00:00:00
-#SBATCH --job-name=totalseg-organ-crops
-#SBATCH --output=/data/oncology/experiments/universal-lesion-segmentation/logs/totalseg-organ-crops.out
-#SBATCH --error=/data/oncology/experiments/universal-lesion-segmentation/logs/totalseg-organ-crops.err
+#SBATCH --job-name=totalseg-organ-crops-dry
+#SBATCH --output=/data/oncology/experiments/universal-lesion-segmentation/logs/totalseg-organ-crops-dry.out
+#SBATCH --error=/data/oncology/experiments/universal-lesion-segmentation/logs/totalseg-organ-crops-dry.err
 #SBATCH --container-mounts=/data/oncology/experiments/universal-lesion-segmentation:/nnunet_data
 #SBATCH --container-image="dockerdex.umcn.nl:5005/nielsrocholl/nnunet-v2-pro-sol-docker:latest"
 
@@ -26,7 +26,7 @@ git -C "$REPO_DIR" reset --hard origin/main
 
 pip3 install -r "${REPO_DIR}/requirements.txt"
 
-# Predictions live here (override if yours differ): export TOTALSEG_PRED_ROOT=...
+# Predictions: export TOTALSEG_PRED_ROOT=... if not default below.
 TOTALSEG_PRED_ROOT="${TOTALSEG_PRED_ROOT:-/nnunet_data/unprocessed-universal-lesion-segmentation/totalseg_segmentations}"
 
 cd "$REPO_DIR"
@@ -34,4 +34,5 @@ python3 crops/batch_crop_organs.py \
   --nnunet-raw /nnunet_data/nnUNet_raw \
   --totalseg-root "$TOTALSEG_PRED_ROOT" \
   --out-root /nnunet_data/unprocessed-universal-lesion-segmentation/totalseg_crops \
-  --margin 10
+  --margin 10 \
+  --dry-run
