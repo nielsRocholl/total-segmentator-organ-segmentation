@@ -1,6 +1,8 @@
 # PyTorch: install separately for your CUDA stack, see https://pytorch.org/get-started/locally/
 # e.g. pip install torch --index-url https://download.pytorch.org/whl/cu124
 rich>=13.0.0
+SimpleITK>=2.3.0
+numpy>=1.24.0
 # TotalSegmentator / nnUNet I/O expect pydicom 3.x (pydicom.pixels); many base images ship 2.x.
 pydicom>=3.0.0
 TotalSegmentator>=2.0.0
