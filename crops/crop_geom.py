@@ -1,6 +1,7 @@
 """BBox crop + pad with consistent LPS/metadata."""
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import numpy as np
@@ -28,8 +29,8 @@ def binarize_labels(full: sitk.Image, label_ids: list[int]) -> sitk.Image:
     return sitk.Cast(m, sitk.sitkUInt8)
 
 
-def bbox_with_margin(
-    binary: sitk.Image, margin: int
+def merged_foreground_bbox_voxels(
+    binary: sitk.Image,
 ) -> tuple[tuple[int, int, int], tuple[int, int, int]] | None:
     b = sitk.Cast(binary > 0, sitk.sitkUInt8)
     stats = sitk.LabelShapeStatisticsImageFilter()
@@ -46,6 +47,39 @@ def bbox_with_margin(
         x1 = max(x1, xs + xl - 1)
         y1 = max(y1, ys + yl - 1)
         z1 = max(z1, zs + zl - 1)
+    return (x0, y0, z0), (x1, y1, z1)
+
+
+def organ_bbox_touches_volume_boundary(binary: sitk.Image) -> tuple[bool, list[str]]:
+    """Heuristic: bbox of foreground touches image extent → organ may be FOV-truncated."""
+    corners = merged_foreground_bbox_voxels(binary)
+    if corners is None:
+        return False, []
+    (x0, y0, z0), (x1, y1, z1) = corners
+    sz = binary.GetSize()
+    faces: list[str] = []
+    if x0 <= 0:
+        faces.append("-x")
+    if x1 >= sz[0] - 1:
+        faces.append("+x")
+    if y0 <= 0:
+        faces.append("-y")
+    if y1 >= sz[1] - 1:
+        faces.append("+y")
+    if z0 <= 0:
+        faces.append("-z")
+    if z1 >= sz[2] - 1:
+        faces.append("+z")
+    return len(faces) > 0, faces
+
+
+def bbox_with_margin(
+    binary: sitk.Image, margin: int
+) -> tuple[tuple[int, int, int], tuple[int, int, int]] | None:
+    corners = merged_foreground_bbox_voxels(binary)
+    if corners is None:
+        return None
+    (x0, y0, z0), (x1, y1, z1) = corners
     start = (x0 - margin, y0 - margin, z0 - margin)
     end = (x1 + margin, y1 + margin, z1 + margin)
     crop_size = tuple(int(end[i] - start[i] + 1) for i in range(3))
@@ -136,6 +170,18 @@ def crop_one_organ(
         extract_crop(organ_bin, region, is_mask=True),
         str(ts_dir / "mask.nii.gz"),
         useCompression=True,
+    )
+    touches, faces = organ_bbox_touches_volume_boundary(organ_bin)
+    (out_dir / "fov_touch.json").write_text(
+        json.dumps(
+            {
+                "bbox_touches_volume_boundary": touches,
+                "faces_index_xyz": faces,
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
     )
 
 
