@@ -78,7 +78,7 @@ def collect_crop_jobs(
                     "Tr",
                     cid,
                     inp,
-                    ds / "labelsTr" / inp.name,
+                    ds / "labelsTr" / f"{cid}{fe}",
                     seg_ds / "labelsTr" / f"{cid}{fe}",
                 )
             )
@@ -90,7 +90,7 @@ def collect_crop_jobs(
                         "Ts",
                         cid,
                         inp,
-                        ds / "labelsTs" / inp.name,
+                        ds / "labelsTs" / f"{cid}{fe}",
                         seg_ds / "labelsTs" / f"{cid}{fe}",
                     )
                 )

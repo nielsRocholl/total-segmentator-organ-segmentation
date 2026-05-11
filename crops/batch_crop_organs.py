@@ -53,7 +53,9 @@ def run_case(job: CropJob, out_root: Path, liver_ids: list[int], lung_ids: list[
         )
     if not job.lesion_label_path.is_file():
         raise FileNotFoundError(
-            f"{job.lesion_label_path}\n(lesion label missing — expect same filename as image under labelsTr/Ts)"
+            f"{job.lesion_label_path}\n"
+            "(lesion label missing — nnUNet expects labelsTr/<case_id><file_ending>, "
+            "images use <case_id>_CHANNEL<file_ending>.)"
         )
     ct = sitk.ReadImage(str(job.image_path))
     seg = sitk.ReadImage(str(job.totalseg_path))
